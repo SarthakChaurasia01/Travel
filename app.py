@@ -4,51 +4,90 @@ import numpy as np
 import joblib
 from datetime import datetime
 
-# Load model
+# -----------------------------
+# PAGE CONFIG
+# -----------------------------
+st.set_page_config(
+    page_title="TourPulse",
+    page_icon="🏞️",
+    layout="wide"
+)
+
+# -----------------------------
+# LOAD MODEL
+# -----------------------------
 model = joblib.load("crowd_model.pkl")
 columns = joblib.load("model_columns.pkl")
 
-st.title("🏞️ Tourist Crowd Prediction System (TourPulse)")
+# -----------------------------
+# CUSTOM CSS (UI MAGIC 🔥)
+# -----------------------------
+st.markdown("""
+<style>
+.main {
+    background-color: #0f172a;
+}
+h1, h2, h3, h4 {
+    color: #ffffff;
+}
+.stButton>button {
+    background-color: #4f46e5;
+    color: white;
+    border-radius: 10px;
+    height: 3em;
+    width: 100%;
+}
+.metric-box {
+    background-color: #1e293b;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # -----------------------------
-# USER INPUT
+# TITLE
 # -----------------------------
+st.title("🏞️ TourPulse AI")
+st.markdown("### Smart Crowd Prediction for Tourist & Religious Places")
 
-location = st.selectbox("Select Location", [
+st.markdown("---")
+
+# -----------------------------
+# SIDEBAR INPUT
+# -----------------------------
+st.sidebar.header("🧾 Input Parameters")
+
+location = st.sidebar.selectbox("📍 Location", [
     "Kedarnath", "Badrinath", "Rishikesh", "Haridwar",
     "Kashi Vishwanath", "Tirupati", "Vaishno Devi",
     "Taj Mahal", "Jaipur Palace", "Gateway of India"
 ])
 
-date = st.date_input("Select Date")
-time = st.slider("Hour", 0, 23)
+date = st.sidebar.date_input("📅 Select Date")
+time = st.sidebar.slider("⏰ Hour", 0, 23)
 
-weather = st.selectbox("Weather", ["Clear", "Cloudy", "Rain"])
+weather = st.sidebar.selectbox("🌤 Weather", ["Clear", "Cloudy", "Rain"])
 
 # -----------------------------
-# FEATURE ENGINEERING (same as training)
+# FEATURE ENGINEERING
 # -----------------------------
-
 dt = datetime.combine(date, datetime.min.time()).replace(hour=time)
 
 hour = dt.hour
 day_of_week = dt.weekday()
 month = dt.month
 
-is_weekend = 1 if day_of_week >= 5 else 0
-is_rush_hour = 1 if 8 <= hour <= 12 else 0
+is_weekend = int(day_of_week >= 5)
+is_rush_hour = int(8 <= hour <= 12)
 
-# Simple logic (same as before)
-is_holiday = 1 if date.strftime("%Y-%m-%d") in [
-    "2025-08-15", "2025-01-26"
-] else 0
-
+is_holiday = int(date.strftime("%Y-%m-%d") in ["2025-08-15", "2025-01-26"])
 is_festival = 0
 is_long_weekend = is_weekend
 
-is_closed = 1 if location in ["Kedarnath","Badrinath"] and month in [11,12,1,2,3,4] else 0
+is_closed = int(location in ["Kedarnath","Badrinath"] and month in [11,12,1,2,3,4])
 
-# Location weight
 location_weight = {
     "Kedarnath": 3, "Badrinath": 3,
     "Tirupati": 4, "Vaishno Devi": 4,
@@ -59,13 +98,11 @@ location_weight = {
 }
 
 weight = location_weight[location]
-
-is_peak_season = 1 if month in [5,6,10,11] else 0
+is_peak_season = int(month in [5,6,10,11])
 
 # -----------------------------
-# CREATE INPUT DATAFRAME
+# INPUT DATA
 # -----------------------------
-
 input_data = {
     "hour": hour,
     "day_of_week": day_of_week,
@@ -80,7 +117,6 @@ input_data = {
     "is_peak_season": is_peak_season,
 }
 
-# Add weather columns
 for w in ["weather_Cloudy", "weather_Rain"]:
     input_data[w] = 0
 
@@ -89,10 +125,8 @@ if weather == "Cloudy":
 elif weather == "Rain":
     input_data["weather_Rain"] = 1
 
-# Convert to DataFrame
 input_df = pd.DataFrame([input_data])
 
-# Match training columns
 for col in columns:
     if col not in input_df:
         input_df[col] = 0
@@ -100,18 +134,55 @@ for col in columns:
 input_df = input_df[columns]
 
 # -----------------------------
-# PREDICTION
+# MAIN DISPLAY
 # -----------------------------
+col1, col2, col3 = st.columns(3)
 
-if st.button("Predict Crowd"):
+col1.markdown(f"<div class='metric-box'><h4>📍 Location</h4><h2>{location}</h2></div>", unsafe_allow_html=True)
+col2.markdown(f"<div class='metric-box'><h4>📅 Date</h4><h2>{date}</h2></div>", unsafe_allow_html=True)
+col3.markdown(f"<div class='metric-box'><h4>🌤 Weather</h4><h2>{weather}</h2></div>", unsafe_allow_html=True)
+
+st.markdown("---")
+
+# -----------------------------
+# PREDICTION BUTTON
+# -----------------------------
+if st.button("🚀 Predict Crowd Level"):
+
     prediction = model.predict(input_df)[0]
 
-    st.subheader(f"Predicted Crowd Level: {prediction}")
+    st.subheader("📊 Prediction Result")
 
-    # Smart message (Gemini-style)
     if prediction == "High":
-        st.error("⚠️ Heavy crowd expected. Plan your visit carefully.")
+        st.error("🔴 High Crowd Expected")
+        st.markdown("⚠️ Expect heavy rush due to peak conditions. Plan carefully.")
+
     elif prediction == "Medium":
-        st.warning("Moderate crowd expected.")
+        st.warning("🟡 Moderate Crowd Expected")
+        st.markdown("👍 Manageable crowd. Visit during non-peak hours.")
+
     else:
-        st.success("Low crowd. Good time to visit!")
+        st.success("🟢 Low Crowd Expected")
+        st.markdown("✨ Great time to visit with minimal crowd.")
+
+    st.markdown("---")
+
+    # SMART AI EXPLANATION
+    st.subheader("🧠 Why this prediction?")
+
+    reasons = []
+
+    if is_weekend:
+        reasons.append("Weekend traffic increases visitors")
+    if is_peak_season:
+        reasons.append("Peak tourist season")
+    if is_rush_hour:
+        reasons.append("Peak visiting hours")
+    if weather == "Rain":
+        reasons.append("Rain reduces crowd")
+
+    if len(reasons) > 0:
+        for r in reasons:
+            st.write("•", r)
+    else:
+        st.write("Normal conditions")
