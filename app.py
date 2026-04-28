@@ -12,7 +12,7 @@ st.set_page_config(
     page_title="TourPulse AI",
     page_icon="🏞️",
     layout="wide",
-    initial_sidebar_state="collapsed" # Focus on the main dashboard
+    initial_sidebar_state="collapsed" 
 )
 
 # -----------------------------
@@ -121,7 +121,7 @@ st.markdown("<p class='subtext'>Next-Gen Crowd Intelligence for Tourist & Religi
 st.markdown("---")
 
 # -----------------------------
-# DASHBOARD INPUTS (Moved from sidebar to main for better UI)
+# DASHBOARD INPUTS
 # -----------------------------
 st.markdown("### 🎛️ Trip Parameters")
 col1, col2, col3, col4 = st.columns(4)
@@ -137,7 +137,13 @@ with col2:
     date = st.date_input("📅 Date")
 
 with col3:
-    time_val = st.slider("⏰ Hour (0-23)", 0, 23, 12)
+    # Generate a list of AM/PM times (e.g., "12:00 AM", "01:00 AM", ... "11:00 PM")
+    time_options = [datetime.strptime(str(h), "%H").strftime("%I:00 %p") for h in range(24)]
+    # Default to 12:00 PM (index 12)
+    selected_time_str = st.selectbox("⏰ Time", time_options, index=12)
+    
+    # Convert AM/PM string back to 24-hour integer for the ML model
+    time_val = datetime.strptime(selected_time_str, "%I:%M %p").hour
 
 with col4:
     weather = st.selectbox("🌤 Weather", ["Clear", "Cloudy", "Rain"])
@@ -190,7 +196,8 @@ input_df = input_df[columns]
 # -----------------------------
 mc1, mc2, mc3 = st.columns(3)
 mc1.markdown(f"<div class='glass-card'><h4>📍 Destination</h4><h2 style='color:#00C9FF;'>{location}</h2></div>", unsafe_allow_html=True)
-mc2.markdown(f"<div class='glass-card'><h4>📅 Planned Visit</h4><h2 style='color:#92FE9D;'>{date.strftime('%b %d, %Y')} @ {time_val}:00</h2></div>", unsafe_allow_html=True)
+# Display formatted string here instead of integer
+mc2.markdown(f"<div class='glass-card'><h4>📅 Planned Visit</h4><h2 style='color:#92FE9D;'>{date.strftime('%b %d, %Y')} @ {selected_time_str}</h2></div>", unsafe_allow_html=True)
 mc3.markdown(f"<div class='glass-card'><h4>🌤 Conditions</h4><h2 style='color:#F6D365;'>{weather}</h2></div>", unsafe_allow_html=True)
 
 st.markdown("<br><br>", unsafe_allow_html=True)
@@ -198,19 +205,17 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 # -----------------------------
 # PREDICTION ENGINE
 # -----------------------------
-_, btn_col, _ = st.columns([1, 2, 1]) # Center the button
+_, btn_col, _ = st.columns([1, 2, 1]) 
 
 with btn_col:
     if st.button("🚀 Run Crowd Analytics"):
         
-        # Add a slick loading animation
         with st.spinner('Analyzing historical data & weather patterns...'):
-            time.sleep(1.5) # Simulate heavy computation for UI effect
+            time.sleep(1.5) 
             prediction = model.predict(input_df)[0]
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Display Result with custom CSS cards
         if prediction == "High":
             st.markdown(f"""
             <div class='result-card result-high'>
@@ -260,11 +265,9 @@ with btn_col:
 
         with chart_col:
             st.markdown("### 📈 Simulated 24-Hour Trend")
-            # Create a mock bell-curve dataframe to simulate crowd trend across the day
             hours = np.arange(0, 24)
             base_trend = np.exp(-0.5 * ((hours - 12) / 4) ** 2) * 100 
             
-            # Adjust mock trend based on current prediction
             if prediction == "High": multiplier = 1.2
             elif prediction == "Medium": multiplier = 0.8
             else: multiplier = 0.4
